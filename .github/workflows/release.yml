@@ -13,6 +13,10 @@ name: Release
 # 只做「发版前的结构自检 + 建 Release」。自检拦住三件事：标签与 package.json 的 version 不一致、
 # `exports` / `dsh.bundle.patch` 指向的文件不存在、`cordis.patch.yml` 没有按包名引用自己。
 #
+# `exports` 里允许 glob 键（本包有 `./locale/*.json`——dsh 正是靠它按完整 specifier 解析插件
+# locale 的），这类键只校验 glob 所在目录存在：`fs.existsSync` 不认通配符，直接拿字面路径去查
+# 会误判成"文件不存在"，把发版整条卡死。
+#
 # 注意：本文件与 CHANGELOG.md 都必须存在于标签指向的那个提交里才会被用到。
 # 改过本文件之后打的标签才享受自动发布；之前的标签要手动建 Release，或者把标签挪到含本文件的提交上。
 
@@ -45,7 +49,7 @@ jobs:
             exit 1
           fi
 
-          node -e "const fs=require('node:fs');const p=require('./package.json');const miss=[];for(const [k,v] of Object.entries(p.exports??{})){const f=typeof v==='string'?v:v.default;if(f&&!fs.existsSync(f))miss.push(k+' -> '+f)}if(miss.length){console.error('exports 指向不存在的文件: '+miss.join(', '));process.exit(1)}const patch=p.dsh?.bundle?.patch;if(!patch||!fs.existsSync(patch)){console.error('dsh.bundle.patch 不存在或为空: '+patch);process.exit(1)}console.log('包结构 OK：exports '+Object.keys(p.exports??{}).length+' 条，patch '+patch)"
+          node -e "const fs=require('node:fs');const p=require('./package.json');const miss=[];for(const [k,v] of Object.entries(p.exports??{})){const f=typeof v==='string'?v:v.default;if(!f)continue;const star=f.indexOf('*');if(star!==-1){const dir=f.slice(0,f.lastIndexOf('/',star)+1);if(dir&&!fs.existsSync(dir))miss.push(k+' -> '+f+'（glob 目录 '+dir+' 不存在）');continue}if(!fs.existsSync(f))miss.push(k+' -> '+f)}if(miss.length){console.error('exports 指向不存在的文件: '+miss.join(', '));process.exit(1)}const patch=p.dsh?.bundle?.patch;if(!patch||!fs.existsSync(patch)){console.error('dsh.bundle.patch 不存在或为空: '+patch);process.exit(1)}console.log('包结构 OK：exports '+Object.keys(p.exports??{}).length+' 条（glob 键只校验目录），patch '+patch)"
 
           grep -qF "$name" cordis.patch.yml || { echo "::error::cordis.patch.yml 里没有按包名 $name 引用自己（预设里的行以 profile 目录为解析基准，不能写相对路径）"; exit 1; }
           echo "cordis.patch.yml OK：按包名引用自己"
