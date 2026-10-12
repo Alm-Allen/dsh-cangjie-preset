@@ -56,6 +56,9 @@ jobs:
 
           for f in plugins/*.mjs; do node --check "$f"; echo "语法 OK：$f"; done
 
+      - name: 离线自测：翻译覆盖率、纪律注入与缓存契约
+        run: node plugins/self-test.mjs
+
       - name: Take this version's notes out of CHANGELOG.md
         run: |
           : > notes.md
