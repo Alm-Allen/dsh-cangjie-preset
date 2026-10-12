@@ -1,7 +1,7 @@
 {
   "name": "@alm-allen/dsh-cangjie-preset",
   "version": "2026.10.12",
-  "description": "仓颉模式（cangjie）：DeepSeek Harness 的中文原生 agent 预设——PTC（Code）模式的完整中文化版本，作为一个 dsh 插件安装。",
+  "description": "仓颉模式（cangjie）：把 DeepSeek Harness 的原生 PTC 模式汉化——系统提示词与 run_code 工具提示词全部中文，模型以中文思维链工作；按 Loader 行 id 覆盖 preset-ptc，不新增预设条目。",
   "type": "module",
   "license": "MIT",
   "main": "./plugins/cangjie-zh.mjs",
