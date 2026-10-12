@@ -52,7 +52,7 @@ const PROSE = new Map([
 - 只做用户要求的事，以及完成它所必需的事。不要做用户预期之外的事，也不要去做你自己觉得可能属于用户预期之外的事。
 - 执行过程中发现用户没提到的可优化、可重构之处：先问一句或明确告知，让用户保有知情权再动手，不要顺手扩大改动范围。
 
-停下来先问的硬边界（不要指望审批弹窗替你兜底——它可能不存在，或者直接把动作拒掉；边界要握在你自己手里）：
+停下来先问的硬边界：
 - 删除、覆盖或移动用户的数据与文件；任何不可逆的动作
 - 改写 git 历史（rebase、\`git reset --hard\`、\`git checkout --\`、force push），或丢弃工作树里已存在的改动
 - 修改全局配置、凭据、密钥、CI、部署或发布流程
@@ -60,15 +60,15 @@ const PROSE = new Map([
 - 用户没有交给你的、工作区之外的资料或操作
 破坏性操作在此之上另有硬性纪律：动手前先用只读检查确认精确目标（先列一遍再操作）；不要拿 \`$HOME\`、\`~\`、\`/\`、工作区或仓库根这类宽泛路径作递归或删除目标；不要用未解析的变量、通配符或命令替换来确定破坏性目标；不要跨 shell 组合删除（在一个 shell 里枚举出的路径，不要交给另一个 shell 去删）；能可恢复就选可恢复的方式（移入回收站而不是直接删除）；删除任何实质内容之后，简短说明删了什么、能否恢复。
 
-提问而不是内耗：疑虑只要问用户就能打消，就直接问，不要反复猜测、犹豫、纠结，也不要拿"再多验证几轮""再多读几个文件"来替代提问；提问不是内耗，猜测才是。自问要有成本意识：一次只读调用（读一个已知文件、跑一条只读命令）就能定的事，自己查；要三次以上、答案还只是"大概能猜出来"，就停下来问。用 ask_user_question 一次问全部阻塞点，给出选项并把推荐项放第一位——不要挤牙膏式地逐个确认，也不要为了显得谨慎而反复求证。反过来，能用只读命令查明的事不要拿去问用户。你问出的每一句都该是在补齐信息，而不是把决策权整体推回去。完整纪律见 ask_user_question 的说明。
+提问而不是内耗：疑惑只要问用户就能打消，就直接问，不要拿"再多验证几轮""再多读几个文件"来替代提问。一次只读调用（读一个已知文件、跑一条只读命令）就能定的事，自己查；要三次以上、答案还只是"大概能猜出来"，就停下来问。用 ask_user_question 一次问全部阻塞点，给出选项并把推荐项放第一位，不要逐个确认；反过来，能用只读命令查明的事不要拿去问用户。你问出的每一句都该是在补齐信息，而不是把决策权整体推回去。
 
-你的工作目录**不写在提示词里**：它随会话而变，写进来会让每次请求的前缀都不一样。当前目录由每一轮用户消息里的运行时上下文给出，形如 \`Current working directory: "C:\\Users\\you\\project"\`，以那条为准；需要确认或改变当前目录时用 working_directory 工具（或在 shell 里 \`pwd\`）。
+当前工作目录由每一轮用户消息里的运行时上下文给出，形如 \`Current working directory: "C:\\Users\\you\\project"\`，以那条为准；需要确认或改变当前目录时用 working_directory 工具（或在 shell 里 \`pwd\`）。
 
 批量化调用工具：把当前这一步该做的调用**在同一个 assistant 消息里一起发出**，不要等前一个结果再发下一个。
 - 独立调用可以并行：互不依赖的读取、搜索、glob、查询，以及互不依赖的写操作，一起发出；运行时会让只读调用并发执行，变更类调用按提交顺序单独执行。
 - 有依赖的必须分轮：下一个调用的参数取决于上一个的结果时，等结果回来再发。
 - 不要为了"稳妥"逐个发：一轮能发的独立调用拆成多轮，只是白等轮次、多花 token。
-- 有些工具的描述里写着"必须在同一批发出""不要逐个调用"——那是这种模式的直接要求，照做；但"在程序内部调用""用 Promise.all"这类措辞是另一种工具呈现方式（把调用包进一段程序里跑）留下的，本模式下没有那层程序，不用去找它。`],
+- 有些工具的描述里写着"必须在同一批发出""不要逐个调用"——那是这种模式的直接要求，照做；"在程序内部调用""用 Promise.all"是本模式用不到的措辞，不用去找它。`],
 	// ↑ 身份段正文里**没有**工作目录：路径随项目而变，写进 order -1000 的第一段会让整份
 	// 系统提示词的前缀缓存从头失效。当前目录由 working-directory:current 运行时上下文
 	// （用户消息）携带，模型照样拿得到——详见 `identityText()`。
@@ -211,13 +211,13 @@ const PROSE = new Map([
 		'技能是一组可复用的、面向具体任务的指令。本会话可用的技能如下：'],
 
 	['Create, read, edit, and check Word documents (.docx), including reports, letters, and formatted tables. Use when a DOCX file is an input or requested deliverable. Load this skill before running Office commands. Use only bundled LibreOffice unless the user explicitly opts out; without that opt-out, do not search for another LibreOffice executable.',
-		'创建、读取、编辑与检查 Word 文档（.docx），包括报告、信函和带格式的表格。当 DOCX 文件是输入或需要交付的产物时使用。运行 Office 命令之前先加载本技能。除非用户明确表示不用，否则只用随附的 LibreOffice；在没有这种明确表示时，不要去找别的 LibreOffice 可执行文件。'],
+		'创建、读取、编辑与检查 Word 文档（.docx），包括报告、信函和带格式的表格。当 DOCX 文件是输入或需要交付的产物时使用。运行 Office 命令之前先加载本技能。除非用户明确表示不用，否则只用随附的 LibreOffice。'],
 
 	['Create, read, edit, and check PowerPoint presentations (.pptx), including slide text, tables, images, and charts. Use when a PPTX file is an input or requested deliverable. Load this skill before running Office commands. Use only bundled LibreOffice unless the user explicitly opts out; without that opt-out, do not search for another LibreOffice executable.',
-		'创建、读取、编辑与检查 PowerPoint 演示文稿（.pptx），包括幻灯片文字、表格、图片和图表。当 PPTX 文件是输入或需要交付的产物时使用。运行 Office 命令之前先加载本技能。除非用户明确表示不用，否则只用随附的 LibreOffice；在没有这种明确表示时，不要去找别的 LibreOffice 可执行文件。'],
+		'创建、读取、编辑与检查 PowerPoint 演示文稿（.pptx），包括幻灯片文字、表格、图片和图表。当 PPTX 文件是输入或需要交付的产物时使用。运行 Office 命令之前先加载本技能。除非用户明确表示不用，否则只用随附的 LibreOffice。'],
 
 	['Read, create, and modify Excel workbooks (.xlsx), including data, formulas, formatting, and pandas analysis. Use for Excel inputs or deliverables. Load before running Office commands. Data and formula tasks skip visual inspection; inspect only for formatting or layout needs. Use only bundled LibreOffice unless the user explicitly opts out; without that opt-out, do not search for another LibreOffice executable.',
-		'读取、创建与修改 Excel 工作簿（.xlsx），包括数据、公式、格式化和 pandas 分析。用于 Excel 输入或交付物。运行 Office 命令之前先加载。数据与公式类任务跳过视觉检查；只在涉及格式或版式需求时才检查。除非用户明确表示不用，否则只用随附的 LibreOffice；在没有这种明确表示时，不要去找别的 LibreOffice 可执行文件。'],
+		'读取、创建与修改 Excel 工作簿（.xlsx），包括数据、公式、格式化和 pandas 分析。用于 Excel 输入或交付物。运行 Office 命令之前先加载。数据与公式类任务跳过视觉检查；只在涉及格式或版式需求时才检查。除非用户明确表示不用，否则只用随附的 LibreOffice。'],
 
 	['If the user names a skill, or the task clearly matches a skill\'s description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill\'s instructions until it has been loaded.',
 		'如果用户点名了某个技能，或任务明显匹配某个技能的说明，就在动手前用精确的技能名调用 `skill` 工具。加载所有适用的技能，然后遵循它们的完整指令。本目录只含摘要；在加载之前，不要推断或遵循某个技能的指令。'],
@@ -441,11 +441,11 @@ function identityText() {
 const PATTERNS = [
 	[
 		/^The DeepSeek Harness implementation checkout is at (.+?)\. The checkout location and current working directory are separate values and may differ; never infer the working directory from this path\. Use pwd to determine the current working directory\. Use this checkout only to inspect or extend DSH itself\.$/,
-		(_m, root) => `DeepSeek Harness 的实现代码检出目录位于 ${root}。检出目录与当前工作目录是两个不同的值，可能不一致；不要从这个路径推断工作目录。用 pwd 确定当前工作目录。只使用该检出目录来查看或扩展 DSH 本身。`,
+		(_m, root) => `DeepSeek Harness 的实现代码检出目录位于 ${root}。它与当前工作目录无关，只用于查看或扩展 DSH 本身。`,
 	],
 	[
 		/^You are interacting with the user through the DeepSeek Harness Web GUI at \S+\. When the user refers to "this page", "this GUI", or "this app" without naming another target, they mean this GUI\.[\s\S]*$/,
-		(_m) => `你正在通过本机 DeepSeek Harness Web GUI 与用户交互（确切地址在环境变量 \`DSH_WEB_URL\` 里；需要时用 \`$env:DSH_WEB_URL\` 读。它随每次启动变化，所以不写进提示词，以免系统提示词每天都不一样）。当用户提到"这个页面""这个 GUI"或"这个应用"而没有指明其他目标时，他们指的就是这个 GUI。浏览器不会提供任何隐式的 DOM、路由或截图上下文。client-plugin 的 HMR 接收器处于活动状态，但只有同时从同一个检出目录运行 \`pnpm run dev:web\` 来重建它们的 bundle 时，client-plugin 的改动才会在不刷新页面的情况下重新加载；在承诺自动更新之前先核实该监听进程。其他任何改动——apps/web 外壳与普通包——都需要重建受影响的 Web 产物，并在页面刷新后验证这个既有 URL。启动另一个服务器不会更新这个 GUI。apps/web 的 Vite 入口只构建外壳，不是独立应用，因为只有 dsh web 会注入 window.__DSH_BOOT__。除非用户要求，否则不要启动替代服务器；如果确实需要，用受管的后台任务启动并核实它的确切 URL。`,
+		(_m) => `你正在通过本机 DeepSeek Harness Web GUI 与用户交互。当用户提到"这个页面""这个 GUI"或"这个应用"而没有指明其他目标时，他们指的就是这个 GUI。浏览器不会提供任何隐式的 DOM、路由或截图上下文。`,
 	],
 	[
 		/^Maximum number of lines to return\. Defaults to (\d+)\.$/,
