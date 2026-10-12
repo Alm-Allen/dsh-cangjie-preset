@@ -1,0 +1,311 @@
+# 仓颉模式（cangjie）预设声明块——本包贡献的组合层。
+#
+# 本包是一个 dsh 插件（bundle）：package.json 的 `dsh.bundle.patch` 指向本文件。一个 profile
+# 只要在 `dsh.profile.bundles` 里列出本包，这一整块就会在 profile 自有 patch **之前**应用，
+# 预设随即出现在「设置 → Agent 预设」。组合顺序见 @deepseek-ai/dsh-app-boot：
+# 各 bundle 的 patch（按 bundles 顺序）→ profile 自己的 cordis.patch.yml → launcher 的 --patch。
+#
+# `- insert:` 头必须保留：它把下面这条声明追加到 profile 组合的根部。缺了它，条目会以
+# 4 空格缩进直接接在 `[]`（或任意顶层条目）之后，写出无法解析的 YAML——profile 会在
+# 启动时 fail loud（dsh: failed to parse overlay ... YAMLException）。
+- insert:
+
+    - id: preset-cangjie
+      name: "@deepseek-ai/dsh-agent-preset"
+      config:
+        id: cangjie
+        name: "仓颉模式"
+        description: "PTC 模式（Code 模式）的完整中文版：系统提示词与 run_code 工具提示词全部汉化，模型以中文思维链工作，工具调用仍通过
+          run_code 的 TypeScript SDK 完成。"
+        plugins:
+          # The `cangjie` agent preset（仓颉模式）：`ptc` 预设的完整中文化版本。
+          #
+          # 组成与 `ptc` 逐行一致——同一个工具集、同一个 `mode: ptc` 呈现方式，唯一的
+          # 差别是模型看到的**文字语言**：
+          #
+          #   1. persona 与 plan-mode 段落在本文件内直接写成中文；
+          #   2. `cangjie-zh.mjs` 在 `system-prompt/assemble` 瀑布上把其余英文提示词
+          #      （各工具的 guidance 段、`tools:ptc-only`、`tools:sdk` 的说明与生成的
+          #      TypeScript 声明注释、`run_code` 自身的描述与参数描述）替换为中文。
+          #
+          # 翻译是"精确匹配 + 正则兜底"的定向替换：只替换已知的英文原文，未知文本原样
+          # 保留，因此升级后新增的工具或段落会以英文出现，而不是被破坏。工具名、参数名、
+          # 代码、命令、路径一律保持原样——模型仍然写 TypeScript 程序，只是用中文思考。
+          #
+          # 这是 AGENT-PLANE 组合。它在 roster 的 standing scope 下挂载一次，每个选择本
+          # 预设的会话按 scope 父子关系加入；宿主组合（`base.cordis.yml` +
+          # `web.cordis.yml`）保留预设绝不能拥有的东西：各注册表本身、沙箱与审批栈、
+          # 持久化、模型路由。
+          #
+          # 这里的服务行必须放在带 `isolate` realm 的 group 内。否则它会发布到 root
+          # realm，成为进程级而非会话级的东西，第二个挂载本预设的会话会与第一个冲突；
+          # `dsh-agent-presets` 在挂载时就会拒绝。`true` 表示 entry-local realm——每个
+          # 挂载会话一份私有实例。共享标签会把一个实例汇到所有命名它的会话。
+
+          # ── identity ────────────────────────────────────────────────────────────────
+
+          # persona 行主动置空：本预设不通过 persona 贡献任何文本。`prefix: ''` 遮蔽部署
+          # 的同名 persona 槽位（order 0），让那个位置保持空白——部署默认的 `personaPrefix`
+          # 本来就是空字符串，所以这里不存在"回退到默认 persona"的问题。
+          #
+          # 原本写在这一行里的全部文本已内化进系统提示词本体，落点如下：
+          #   1. 中文思维链要求、动作边界（按请求类型取自主度）、必须先问的硬边界、
+          #      破坏性操作纪律、工作目录 → 并入身份段 HARNESS_IDENTITY（order -1000，
+          #      提示词第一段），通过 cangjie-zh.mjs 的 PROSE 表随英文化替换写入；
+          #   2. 提问而不是内耗 → 并入 `ask_user_question` 的说明（DOCS 表），它出现在
+          #      `tools:sdk` 段的 JSDoc 声明里；
+          #   3. 文件写入纪律 → 并入 `write` / `edit` 的说明（PROSE 表，原有条目）；
+          #   4. run_code 调用纪律 → 并入 `tools:sdk` 段的程序内调用说明（PROSE 表）；
+          #   5. 交付物呈现纪律 → 并入 `present` 的说明（DOCS 表）。
+          # 这样每条纪律都落在语义相关的位置，且不再占用 persona 这一层。
+          - id: persona
+            name: "@deepseek-ai/dsh-persona"
+            config:
+              prefix: ""
+
+          # persona 主动置空：原本写在这里的行为边界、提问纪律、文件写入纪律、run_code
+          # 调用纪律与交付物呈现纪律，已全部内化进系统提示词本体——通用的行为约束并入
+          # 提示词最前面的身份段（HARNESS_IDENTITY），工具相关的纪律并入各自工具的说明。
+          # 本行保留只为占住部署 persona 的槽位（order 0），不再贡献任何文本；
+          # 具体落点见 cangjie-zh.mjs 的 PROSE 与 DOCS 表。
+
+          # 把英文提示词汉化。`system-prompt/assemble` 是系统提示词组装的瀑布事件，
+          # `await next()` 拿到下游全部贡献后的结果，本插件只做文本替换，不改结构。
+          # 这一行按**包名**解析，不是 profile 目录下的相对路径：预设里的行由挂载本预设的
+          # Loader 以 profile 目录为基准解析（`mountPreset` 的 baseUrl），而翻译层就在本包里——
+          # 包入口即 `plugins/cangjie-zh.mjs`（见 package.json 的 `exports`）。本包同时是 profile
+          # 的一个 bundle，所以一定命中 profile 的模块解析。
+          - id: cangjie-zh
+            name: "@alm-allen/dsh-cangjie-preset"
+
+          - id: agent-instructions
+            name: "@deepseek-ai/dsh-agent-instructions"
+            config:
+              maxBytes: 65536
+
+          # ── shell ───────────────────────────────────────────────────────────────────
+
+          # `shell-env` 留在 HOST 组合：`apps/cli/src/web.ts` 注入它以发布
+          # `DSH_WEB_URL`/`DSH_WEB_MODE`，而"注入服务的宿主行"正是宿主平面归属的判据——
+          # 注入在任何会话存在之前就解析，没有 agent 可作键。放在预设 realm 之后，那些
+          # 变量根本到不了模型的 shell。两个 shell 工具在这里消费宿主注册表；它们的执行
+          # 器（`bash-sandbox`/`pwsh-sandbox`）同样属于宿主平面。
+          - id: tool-bash
+            name: "@deepseek-ai/dsh-tool-bash"
+            disabled: !!js process.platform === 'win32'
+
+          - id: tool-pwsh
+            name: "@deepseek-ai/dsh-tool-pwsh"
+            disabled: !!js process.platform !== 'win32'
+
+          # ── filesystem ──────────────────────────────────────────────────────────────
+
+          # 两行都只注册进宿主的 `tools` 注册表、不提供任何服务，因此不需要 realm。
+          # `fs` 服务及其策略留在宿主。
+          - id: tool-fs
+            name: "@deepseek-ai/dsh-tool-fs"
+
+          - id: tool-fs-search
+            name: "@deepseek-ai/dsh-tool-fs-search"
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── background jobs ────────────────────────────────────────────────────────
+
+          # 只有面向模型的控制工具。任务注册表留在宿主平面：它的生产者位于本文件能给它的
+          # 任何 realm 之外——上面的 `tool-bash` 用 `ctx.get` 解析它，而 entry-local
+          # realm 对每个同级行都不可见，所以 `run_in_background` 会回答"后台任务不可用"，
+          # 而这两个控制工具却还列在目录里。注册表本来就按所属 agent 分键，一个宿主实例
+          # 服务所有会话。预设决定的是它的 agent 能否收集和停止后台工作。
+          - id: tool-jobs
+            name: "@deepseek-ai/dsh-tool-jobs"
+
+          # ── skills ──────────────────────────────────────────────────────────────────
+
+          # 技能注册表在宿主组合里，按 scope 分层：这些行注册进本预设的那一层，因此不需要
+          # realm。`skill-filesystem` 为本预设的 agent 贡献本地根发现，`tool-skill` 给它们
+          # 目录与加载器；合并后的目录还携带部署全局注册的内容。
+          - id: skill-filesystem
+            name: "@deepseek-ai/dsh-skill-filesystem"
+
+          - id: tool-skill
+            name: "@deepseek-ai/dsh-tool-skill"
+
+          # ── goals ───────────────────────────────────────────────────────────────────
+
+          # goal 服务与会话驱动器留在宿主平面，Gateway 才能解析它们。人类命令与面向模型的
+          # 工具注册进本预设的 scoped 层。
+          - id: command-goal
+            name: "@deepseek-ai/dsh-command-goal"
+
+          - id: tool-goal
+            name: "@deepseek-ai/dsh-tool-goal"
+
+          # ── plan mode ───────────────────────────────────────────────────────────────
+
+          # 计划状态天然是按 agent 的，所以这里 entry-local realm 不是变通，而是正确的生命周期。
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: "@deepseek-ai/dsh-plan-mode"
+                config:
+                  section: |
+                    你处于计划模式。在 exit_plan_mode 成功或用户切换会话模式之前，一直保持在计划模式。用祈使句要求实施改动，意味着规划该实施，而不是执行它。用户的对话式同意——包括回答你提出的某个问题——不构成批准，也不结束计划模式；把已确认的决定并入计划，并通过 exit_plan_mode 提交。
+
+                    先探索。用只读的读取、搜索、静态分析和检查，把计划建立在真实的代码库之上。不要编辑或写入文件、不要改配置、不要运行会重写受跟踪文件的格式化或代码生成、不要提交，也不要其他方式执行计划。优先复用既有函数和模式，而不是新建机制。
+
+                    为了请求缓存稳定，工具目录在各模式之间保持不变。这些计划模式规则覆盖任何后续的、暗示使用变更类工具的工具描述或引导；那些工具仍然列在目录里，以保持目录不变。不要用 todo_write 跟踪这个规划阶段：它跟踪的是批准后的实施，而计划本身属于 exit_plan_mode。
+
+                    通过检查解决可发现的事实。只在用户自有的选择或检查无法回答的实质性歧义上使用 ask_user_question。当你能自己查明代码位置或当前行为时，不要问用户。
+
+                    让计划达到"无需再做决策"的完整度：说明目标与成功标准；按子系统分组实施改动；指出公共 API、schema 与数据流的变化；覆盖边界情况、失败模式、测试、验收标准和显式假设。既足够简洁便于评审，又足够详细，使另一位工程师无需再做设计决策就能实施。
+
+                    准备好后，用完整的计划 markdown 调用 exit_plan_mode，以 `#` 标题开头。让 exit_plan_mode 成为那条 assistant 响应中唯一且最后的工具调用：它把计划提交审批，实施只在批准之后的后续步骤开始。不要把最终计划当作普通回复粘贴，也不要通过散文或 ask_user_question 问"我该继续吗？"。如果评审驳回，吸收反馈后再次提交。如果评审通道不可用或被中止，留在计划模式并请用户手动切换模式；不要继续实施。
+
+          # ── compaction ──────────────────────────────────────────────────────────────
+
+          # `compaction-basic` 通过 `ctx.get` 读取 `toolResultPrune`，所以裁剪器必须与它共享
+          # 同一个 realm，而不是坐在外面。
+          #
+          # `tokenMeter` 有意不放进这个 realm：计量器留在 HOST 平面，这里的行解析那一个实例。
+          # 它不取配置、按 Session 给每次折叠分键，并拥有浏览器为每个会话读取的上下文计量
+          # 投影单元——放进 realm 后，这些单元会随当前挂载了哪些预设而出现或消失。预设决定
+          # 的是它的 agent 是否压缩，也就是下面的 `compaction-basic`。
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: "@deepseek-ai/dsh-compaction-basic"
+
+              - id: command-compact
+                name: "@deepseek-ai/dsh-command-compact"
+
+              - id: tool-result-pruner
+                name: "@deepseek-ai/dsh-compaction-tool-result-pruner"
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+          # ── delegation and workflows ────────────────────────────────────────────────
+
+          # `subagents` 注册表及其 spawn/fork 后端在 HOST 组合里：注册表是进程单例，其跨会话
+          # 查询由 api-proxy 提供给浏览器，而一个 provider 名只能注册一次。本预设贡献的是委派
+          # 工具，它们解析那个宿主注册表。
+          #
+          # `workflows` 不同——agent 之外没有东西读它——所以每个触达它的行在这里共享一个
+          # entry-local realm，落在外面的消费者会解析到本预设并未填充的宿主注册表。
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: "@deepseek-ai/dsh-tool-subagent-control"
+
+              - id: tool-subagent-list-agents
+                name: "@deepseek-ai/dsh-tool-subagent-control/list-agents"
+
+              - id: tool-subagent
+                name: "@deepseek-ai/dsh-tool-subagent"
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelectionSettings: true
+                  backgroundMode: continuable
+
+              # fork 省略模型选择，使 provider/model 与父级相同，继承的历史保持可用于 KV Cache
+              # 复用。本预设让 fork 保持 continuable；父子继承同一个消息工具，而父级 id 与
+              # 返回引导跟随继承的历史。
+              - id: tool-subagent-fork
+                name: "@deepseek-ai/dsh-tool-subagent"
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+                  backgroundMode: continuable
+
+              # 生产版 dsh 不安装这些可选 provider。在本 Profile 安装对应 Bundle 并重启 Host，
+              # 然后复制本预设并从匹配的工具行移除 `disabled`。仅宿主可用并不授予任何工具。
+              - id: tool-subagent-codex
+                name: "@deepseek-ai/dsh-tool-subagent"
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: tool-subagent-claude-code
+                name: "@deepseek-ai/dsh-tool-subagent"
+                disabled: true
+                config:
+                  provider: claude-code
+                  toolName: subagent_claude_code
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: workflow-ptc
+                name: "@deepseek-ai/dsh-workflow-ptc"
+                config:
+                  provider: spawn
+
+              - id: tool-workflow
+                name: "@deepseek-ai/dsh-tool-workflow"
+                # 保留上面的引擎供 `ralph` 使用，但不在 PTC 模式下与 `run_code` 并列发布第二个
+                # 由模型编写的编排面。
+                disabled: true
+
+              - id: tool-ralph
+                name: "@deepseek-ai/dsh-tool-ralph"
+                config:
+                  subagentProvider: spawn
+                  maxRounds: 64
+
+          # ── remaining model-facing rows ─────────────────────────────────────────────
+
+          - id: tool-ask-user
+            name: "@deepseek-ai/dsh-tool-ask-user"
+
+          - id: tool-todo
+            name: "@deepseek-ai/dsh-tool-todo"
+            config:
+              allowParallelInProgress: true
+
+          # `web` 服务及其搜索 provider 留在宿主组合；只有面向模型的工具是按会话的。
+          - id: tool-web
+            name: "@deepseek-ai/dsh-tool-web"
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+
+          # ── presentation ────────────────────────────────────────────────────────────
+
+          # 只对本 agent 生效的 PTC 模式。这一行等待宿主的 `codeRuntime` 而不是假定它存在：
+          # 一个没有组合 TypeScript 运行时的部署会在挂载时失败并点名本 id，而不是在第一个
+          # 请求时才失败。
+          - id: tool-presentation
+            name: "@deepseek-ai/dsh-agent-tool-presentation"
+            config:
+              mode: ptc
+
+          # ── deliverables ─────────────────────────────────────────────────────────────
+
+          # `present` 把已完成的文件声明为交付物，Web 界面把它们渲染成收尾消息下方的交付
+          # 卡片。PTC 模式下它同样以 SDK 形式暴露，模型只能在 run_code 程序内部用
+          # `tools.present` 调用——这正是它不可省略的原因：run_code 内部通过 tools.write /
+          # tools.edit 写出的文件不会被 DSH 的变更追踪捕获，自动的 "Files changed" 行看不到
+          # 它们，只有显式声明才能交付。shipped 的 `standard`/`ptc`/`cordis` 都挂载本行，
+          # 而宿主组合一行都不提供，所以漏掉它的预设会在整个目录里失去这个工具，persona 的
+          # 交付物纪律也就无从执行。只注册进宿主 `tools` 注册表、不提供任何服务，因此不需要
+          # realm。
+          - id: present
+            name: "@deepseek-ai/dsh-tool-present"

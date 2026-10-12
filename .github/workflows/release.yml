@@ -1,0 +1,72 @@
+name: Release
+
+# 推一个 v* 标签，自动开一次 GitHub Release。
+#
+# GitHub 不会把标签自动变成 Release —— 它只为显式创建的标签建 Release，
+# 所以这里在打标签的那一刻替你做掉那一步。
+#
+# 报告取自 CHANGELOG.md 里与这个标签同名的那一段（`## [2026.10.12] …`）：发版前的规矩只有一条 ——
+# **先在 CHANGELOG.md 顶上补一段，再打标签**。仓库里没有这一段、或者这一段是空的，
+# 就退回 GitHub 自动生成的提交清单（不会因此挂掉）。
+#
+# 本包**零构建**：仓库里放的就是产物（`plugins/` 与 `cordis.patch.yml`），所以这里没有构建步骤，
+# 只做「发版前的结构自检 + 建 Release」。自检拦住三件事：标签与 package.json 的 version 不一致、
+# `exports` / `dsh.bundle.patch` 指向的文件不存在、`cordis.patch.yml` 没有按包名引用自己。
+#
+# 注意：本文件与 CHANGELOG.md 都必须存在于标签指向的那个提交里才会被用到。
+# 改过本文件之后打的标签才享受自动发布；之前的标签要手动建 Release，或者把标签挪到含本文件的提交上。
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # gh release create 需要写权限
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 发版前自检：标签、包结构、插件语法
+        run: |
+          set -e
+          tag="${GITHUB_REF_NAME#v}"
+          version=$(node -p "require('./package.json').version")
+          name=$(node -p "require('./package.json').name")
+          echo "标签 $GITHUB_REF_NAME / package.json $version / 包名 $name"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::标签 $GITHUB_REF_NAME 与 package.json 的 version $version 不一致"
+            exit 1
+          fi
+
+          node -e "const fs=require('node:fs');const p=require('./package.json');const miss=[];for(const [k,v] of Object.entries(p.exports??{})){const f=typeof v==='string'?v:v.default;if(f&&!fs.existsSync(f))miss.push(k+' -> '+f)}if(miss.length){console.error('exports 指向不存在的文件: '+miss.join(', '));process.exit(1)}const patch=p.dsh?.bundle?.patch;if(!patch||!fs.existsSync(patch)){console.error('dsh.bundle.patch 不存在或为空: '+patch);process.exit(1)}console.log('包结构 OK：exports '+Object.keys(p.exports??{}).length+' 条，patch '+patch)"
+
+          grep -qF "$name" cordis.patch.yml || { echo "::error::cordis.patch.yml 里没有按包名 $name 引用自己（预设里的行以 profile 目录为解析基准，不能写相对路径）"; exit 1; }
+          echo "cordis.patch.yml OK：按包名引用自己"
+
+          for f in plugins/*.mjs; do node --check "$f"; echo "语法 OK：$f"; done
+
+      - name: Take this version's notes out of CHANGELOG.md
+        run: |
+          : > notes.md
+          if [ -f CHANGELOG.md ]; then
+            awk -v want="## [${GITHUB_REF_NAME#v}]" 'substr($0, 1, length(want)) == want { inside = 1; next } /^## \[/ { inside = 0 } inside' CHANGELOG.md > notes.md
+          fi
+          echo "抽到的报告 $(wc -c < notes.md) 字节"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -s notes.md ]; then
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --verify-tag --notes-file notes.md
+          else
+            echo "CHANGELOG.md 里没有 $GITHUB_REF_NAME 这一段，退回自动生成的提交清单。"
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --verify-tag --generate-notes
+          fi

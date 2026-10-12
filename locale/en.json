@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Cangjie mode",
+    "description": "The fully localized Chinese edition of PTC (Code) mode: the system prompt and the run_code tool guidance are in Chinese, while tool names, arguments, code, commands and paths stay verbatim."
+  }
+}

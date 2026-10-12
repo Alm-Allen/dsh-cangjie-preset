@@ -1,0 +1,9 @@
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+
+# 只留在本机，不进公开仓库：开发文档、协作说明与旧装法归档
+文档/
+AGENTS.md
+归档/

@@ -1,0 +1,43 @@
+{
+  "name": "@alm-allen/dsh-cangjie-preset",
+  "version": "2026.10.12",
+  "description": "仓颉模式（cangjie）：DeepSeek Harness 的中文原生 agent 预设——PTC（Code）模式的完整中文化版本，作为一个 dsh 插件安装。",
+  "type": "module",
+  "license": "MIT",
+  "main": "./plugins/cangjie-zh.mjs",
+  "exports": {
+    ".": "./plugins/cangjie-zh.mjs",
+    "./cangjie-zh": "./plugins/cangjie-zh.mjs",
+    "./self-test": "./plugins/self-test.mjs",
+    "./audit-coverage": "./plugins/audit-coverage.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "plugins",
+    "cordis.patch.yml",
+    "locale",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Alm-Allen/dsh-cangjie-preset.git"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "agent-preset",
+    "cangjie"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  }
+}
