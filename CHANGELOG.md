@@ -7,6 +7,20 @@ Release 就退回 GitHub 自动生成的提交清单。
 
 版本号用日期式（`2026.10.12`），与 `package.json` 的 `version`、tag 名同号。
 
+## [2026.10.17] - 2026-10-17
+
+### 适配 dsh 0.2.1-rc.1
+
+- 基准版本收敛为 **0.2.1-rc.1**（Web 的全局 npm 包与 Desktop 内置运行时都是它）。shipped
+  `ptc` 逐行重述时补上 `tool-schedule` 与 `tool-plugin-market`，删除 rc.2 遗留的
+  `tool-subagent-codex` / `tool-subagent-claude-code` / `tool-ralph` 三行，按 rc.1 的 shipped
+  去掉 subagent 的 `backgroundMode`；plan-mode 首句按 rc.1 措辞重译。
+- 补译 rc.1 的新描述：office 技能拆成 7 个入口后的全部新描述，以及 `bash` 的 guidance 段与
+  工具描述（Linux/macOS 上会进 `tools:sdk`）；`workflow` 的 guidance 段补了正则映射。
+- `translateTool` 改为递归翻译整棵参数表（`run_code` 的 `code` 参数等走同一条路径）。
+- `audit-coverage.mjs` 对工具文本同时测 schema 路径与 JSDoc 路径，减少假缺口。
+- `self-test.mjs` 的技能目录样本改用 rc.1 的 office 新描述并断言其已汉化。
+
 ## [2026.10.12] - 2026-10-12
 
 ### 以 dsh 插件包发布

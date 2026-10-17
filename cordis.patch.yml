@@ -14,9 +14,9 @@
 # 三条必须守住的规则（见 @deepseek-ai/dsh-agent-preset 的 cordis-composition-reference skill）：
 #
 #   1. **`config` 是整体替换，绝不深合并**——upstream 那份 `plugins` 列表必须在这里完整重述，
-#      漏一行就等于那个插件消失。本文件的基准是 **0.2.0-rc.2** 的
-#      `dsh-web-app/presets/ptc.patch.yml`：逐行完整重述它，另加 `cangjie-zh`（汉化层）与
-#      `time-context`，并把 persona 置空；
+#      漏一行就等于那个插件消失。本文件的基准是 **0.2.1-rc.1** 的
+#      `dsh-web-app/presets/ptc.patch.yml`：逐行完整重述它，另加 `cangjie-zh`（汉化层），
+#      并把 persona 置空；
 #   2. `name` 为真值时只是**断言**既有插件名，不是重命名——所以这里保持
 #      `@deepseek-ai/dsh-agent-preset`，而 `config.id` 必须写成 `ptc`：会话保存的是它；
 #   3. 目标行没匹配上时 Loader 只警告并跳过，不会弄坏 profile——所以本包单独装、或 shipped
@@ -28,24 +28,12 @@
 # ⚠️ 代价：override 冻结整份 `config`。dsh 升级后 shipped 文件若新增或改动插件行，本文件不会
 # 自动跟随，需要对照 `dsh-web-app/presets/ptc.patch.yml` 手工核对一次。
 #
-# ⚠️ 两个 dsh 版本的 shipped `ptc` 并不一样（已逐行核对）。本文件按「两版都能加载」取
-# 基准：只收录两版都存在对应插件包的行。
-#
-#   · 0.2.0-rc.2（旧 RC，Web profile 用的那个）——本文件的基准。它的 shipped 里有
-#     `tool-subagent-codex` / `tool-subagent-claude-code` / `tool-ralph`（三行本来就
-#     `disabled: true`，保留无害），`persona` 带 `suffix: Your working directory is {{cwd}}.`，
-#     没有 `time-context` / `tool-schedule`；
-#   · 0.2.1-alpha.2（最新 alpha，Desktop 用的那个）——shipped 里没有上面那三行，改挂
-#     `time-context` 与 `tool-schedule`，给两个 subagent 行加了
-#     `toolFilter.deny: [schedule_*]`，`persona` 只有 `prefix`、没有 `suffix`。
-#
-# `tool-schedule` **故意不收录**：rc.2 的包里没有 `@deepseek-ai/dsh-tool-schedule`
-# （只有 `@deepseek-ai/dsh-schedule`），而一行引用不到的包会让整个预设激活失败、组不成会话。
-# 代价是 Desktop 上少一个 schedule 工具行——属可选能力，且 shipped 本身也对 subagent
-# `deny` 了它。`time-context` 两版都有包，所以收录，Desktop 因此不会比原生 ptc 少这项。
-#
-# alpha.2 的 `toolFilter` 也没有跟随：它在 rc.2 的 schema 里未必被接受（未验证），而不 deny 的
-# 唯一后果是 subagent 可能多看到几个 schedule 工具——本文件根本没挂那几行。
+# ⚠️ 基准版本：**0.2.1-rc.1**。Web 的全局 npm 包与 Desktop 内置运行时现在都是它，提示词也与
+# 源码 HEAD 一致（rc.1 之后只多 UI 提交）。上一版维护的「0.2.0-rc.2 + 0.2.1-alpha.2 双版兼容」
+# 已收敛为单一基准：`tool-subagent-codex` / `tool-subagent-claude-code` / `tool-ralph` 三行是
+# rc.2 的遗留（shipped 已删除），本文件不再保留；`tool-schedule` 与 `tool-plugin-market`
+# 在 rc.1 的包里都存在，按 shipped 收录。`persona` 早就不带 `suffix: {{cwd}}.`，这里继续
+# 用空前缀占位（见下方 identity 段注释）。
 - id: preset-ptc
   name: "@deepseek-ai/dsh-agent-preset"
   config:
@@ -69,7 +57,8 @@
       # workflow / ralph 三行**保持 shipped 的 `disabled: true`**：PTC 模式下 `run_code`
       # 本身就是编排面，官方引导文案也明说「当前 PTC 预设未启用 workflow 工具」
       # （`dsh-client-ui-agent-preset` 的 PTC 说明）。禁用之后这些插件不激活、不注册工
-      # 具，提示词里自然也不会出现它们的段落，翻译层不必为它们保留条目。
+      # 具，提示词里自然也不会出现它们的段落，翻译层不必为它们保留条目。0.2.1-rc.1 的
+      # shipped 只剩 `workflow-ptc` 与 `tool-workflow` 两行（ralph 行已移除，本文件不再写）。
       #
       # 这是 AGENT-PLANE 组合。它在 roster 的 standing scope 下挂载一次，每个选择本
       # 预设的会话按 scope 父子关系加入；宿主组合（`base.cordis.yml` +
@@ -120,9 +109,8 @@
         config:
           maxBytes: 65536
 
-      # alpha.2 的 shipped 在这一位置挂了 `time-context`（把当前时间作为运行时上下文注入）；
-      # rc.2 的 shipped 没挂，但**两版的包里都有** `@deepseek-ai/dsh-time-context`，所以收录它
-      # 是两版都安全的。它贡献的是 contexts（不是 sections），不参与身份段的缓存契约。
+      # `time-context` 把当前时间作为运行时上下文注入。它贡献的是 contexts（不是 sections），
+      # 不参与身份段的缓存契约。0.2.1-rc.1 的 shipped `ptc` 挂了这一行，按 shipped 收录。
       - id: time-context
         name: "@deepseek-ai/dsh-time-context"
 
@@ -163,6 +151,11 @@
       - id: tool-jobs
         name: "@deepseek-ai/dsh-tool-jobs"
 
+      # 定时任务（schedule_*）的注册表在宿主平面，这里只挂面向模型的控制工具。
+      # 0.2.1-rc.1 的 shipped `ptc` 收了这一行，包里也有对应实现，按 shipped 对齐。
+      - id: tool-schedule
+        name: "@deepseek-ai/dsh-tool-schedule"
+
       # ── skills ──────────────────────────────────────────────────────────────────
 
       # 技能注册表在宿主组合里，按 scope 分层：这些行注册进本预设的那一层，因此不需要
@@ -197,7 +190,7 @@
             name: "@deepseek-ai/dsh-plan-mode"
             config:
               section: |
-                你处于计划模式。在 exit_plan_mode 成功或用户切换会话模式之前，一直保持在计划模式。用祈使句要求实施改动，意味着规划该实施，而不是执行它。用户的对话式同意——包括回答你提出的某个问题——不构成批准，也不结束计划模式；把已确认的决定并入计划，并通过 exit_plan_mode 提交。
+                你处于计划模式。在用户通过 exit_plan_mode 批准你的计划或切换会话模式之前，一直保持在计划模式。用祈使句要求实施改动，意味着规划该实施，而不是执行它。用户的对话式同意——包括回答你提出的某个问题——不构成批准，也不结束计划模式；把已确认的决定并入计划，并通过 exit_plan_mode 提交。
 
                 先探索。用只读的读取、搜索、静态分析和检查，把计划建立在真实的代码库之上。不要编辑或写入文件、不要改配置、不要运行会重写受跟踪文件的格式化或代码生成、不要提交，也不要其他方式执行计划。优先复用既有函数和模式，而不是新建机制。
 
@@ -264,49 +257,26 @@
               provider: spawn
               toolName: subagent
               modelSelectionSettings: true
-              backgroundMode: continuable
 
           # fork 省略模型选择，使 provider/model 与父级相同，继承的历史保持可用于 KV Cache
-          # 复用。本预设让 fork 保持 continuable；父子继承同一个消息工具，而父级 id 与
-          # 返回引导跟随继承的历史。
+          # 复用。`backgroundMode` 在 rc.1 的 shipped 里已经不再写，这里同样不写。
           - id: tool-subagent-fork
             name: "@deepseek-ai/dsh-tool-subagent"
             config:
               provider: fork
               toolName: subagent_fork
-              backgroundMode: continuable
 
-          # 生产版 dsh 不安装这些可选 provider。在本 Profile 安装对应 Bundle 并重启 Host，
-          # 然后复制本预设并从匹配的工具行移除 `disabled`。仅宿主可用并不授予任何工具。
-          - id: tool-subagent-codex
-            name: "@deepseek-ai/dsh-tool-subagent"
-            disabled: true
-            config:
-              provider: codex
-              toolName: subagent_codex
-              backgroundMode: one-shot
-              maxDepth: provider-managed
-
-          - id: tool-subagent-claude-code
-            name: "@deepseek-ai/dsh-tool-subagent"
-            disabled: true
-            config:
-              provider: claude-code
-              toolName: subagent_claude_code
-              backgroundMode: one-shot
-              maxDepth: provider-managed
-
-          # 下面三行**保持 shipped 的 disabled: true**，与原生 `ptc` 逐行一致。
+          # 下面两行**保持 shipped 的 disabled: true**，与原生 `ptc` 逐行一致。
           #
           # PTC 模式下 `run_code` 本身就是模型的编排面，官方引导文案也明说「当前 PTC
           # 预设未启用 workflow 工具」（`dsh-client-ui-agent-preset` 的 PTC 说明），所以
           # shipped 把整个 workflow/ralph 面关掉了：
           #
           #   · `workflow-ptc` 是那个共享沙箱 Node 运行时里的编排引擎；
-          #   · `tool-workflow` 与 `tool-ralph` 是它面向模型的两个入口。
+          #   · `tool-workflow` 是它面向模型的入口。
           #
-          # 三行都不激活 → 不注册工具 → `system-prompt/assemble` 里不会产生对应段落，
-          # 翻译层无需为它们保留条目。要恢复只需删掉 `disabled`（引用的包两版都在）。
+          # 两行都不激活 → 不注册工具 → `system-prompt/assemble` 里不会产生对应段落，
+          # 翻译层无需为它们保留条目。要恢复只需删掉 `disabled`（引用的包都在）。
           - id: workflow-ptc
             name: "@deepseek-ai/dsh-workflow-ptc"
             disabled: true
@@ -316,13 +286,6 @@
           - id: tool-workflow
             name: "@deepseek-ai/dsh-tool-workflow"
             disabled: true
-
-          - id: tool-ralph
-            name: "@deepseek-ai/dsh-tool-ralph"
-            disabled: true
-            config:
-              subagentProvider: spawn
-              maxRounds: 64
 
       # ── remaining model-facing rows ─────────────────────────────────────────────
 
@@ -364,10 +327,16 @@
       - id: present
         name: "@deepseek-ai/dsh-tool-present"
 
-      # ── plugin manager ──────────────────────────────────────────────────────────
+      # ── plugin manager / plugin market ──────────────────────────────────────────
 
-      # shipped `ptc` 也挂这一行（默认 disabled）。override 是整份替换，漏掉它就等于把
-      # 这一行从预设里删掉——补在这里，与 shipped 逐行对齐。
+      # shipped `ptc` 也挂这两行（默认 disabled）。override 是整份替换，漏掉它们就等于把
+      # 这两行从预设里删掉——补在这里，与 shipped 逐行对齐。`tool-plugin-market` 是
+      # 0.2.1-rc.1 新增的读取型工具（浏览已配置的插件市场索引），两者都由 profile 层按需
+      # 启用；普通 PTC 模式保持 shipped 的禁用状态。
       - id: tool-plugin-manager
         name: "@deepseek-ai/dsh-plugin-manager/tools"
+        disabled: true
+
+      - id: tool-plugin-market
+        name: "@deepseek-ai/dsh-plugin-market/tools"
         disabled: true

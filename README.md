@@ -132,14 +132,11 @@ JSDoc 注释映射 → 长段落内的子串替换。**只替换已知的英文�
 
 - 零第三方依赖、零构建步骤：仓库里放的就是最终产物，所以 `github:` 直装不需要任何构建授权
   （pnpm 不会因为 `prepare` 脚本拦下它）。
-- 翻译表按 **0.2.1-alpha.2** 的提示词逐条核对并适配，**只保证 0.2.1-alpha.1 及以后**；
-  更旧的 dsh 版本会有较多段落翻译不上（旧版键已按需求删除）。上游再次改写提示词时，
-  未知文本原样保留为英文，用上面的自测（看真实提示词）或审计（看源码全量）自查。
-- **一份 `cordis.patch.yml` 同时服务两个 dsh 版本**（0.2.0-rc.2 与 0.2.1-alpha.2）：它以 rc.2
-  的 shipped `ptc` 为基准逐行重述，并只收录**两版都存在对应插件包**的行。`tool-schedule`
-  故意不收——rc.2 的包里没有 `@deepseek-ai/dsh-tool-schedule`，而一行引用不到的包会让整个预设
-  激活失败、组不成会话；代价是 Desktop 上少一个 schedule 工具行（属可选能力）。`time-context`
-  两版都有包故收录。两版 shipped 的逐行差异见 [CHANGELOG.md](./CHANGELOG.md)。
+- 翻译表按 **0.2.1-rc.1** 的提示词逐条核对并适配；上游再次改写提示词时，未知文本原样保留为
+  英文，用上面的自测（看真实提示词）或审计（看源码全量）自查。
+- **基准版本是 0.2.1-rc.1**（Web 的全局 npm 包与 Desktop 内置运行时都是它）。`cordis.patch.yml`
+  以该版 shipped `ptc` 逐行重述：收录 `tool-schedule` 与 `tool-plugin-market`，不再保留
+  rc.2 时代的 `tool-subagent-codex` / `tool-subagent-claude-code` / `tool-ralph` 三行。
 - **升级 dsh 后要回头核对**：override 冻结整份 `config`，shipped 文件若新增或改动了插件行，
   本包不会自动跟随。升级后把 `cordis.patch.yml` 与 `dsh-web-app/presets/ptc.patch.yml`
   对一遍（桌面端该文件在 `app.asar` 内，shell 打不开，但 dsh 自己的 read 工具能读）。

@@ -184,12 +184,17 @@ if (variableProblems.length > 0) {
 // ——`dsh-tool-skill` 用 entries 的结构化 digest 决定是否注入（相同摘要时反而把目录消息从本轮
 // 摘掉），本插件只换文本、保留 message id 与 source，所以翻译不会让目录每个 step 重发。
 // 这里再守住另一件事：改写必须**幂等**，否则落地文本会漂移、前缀缓存跟着失效。
+const OFFICE_SKILLS = [
+	{ name: 'office', description: 'Create, edit, inspect, or convert Office documents, spreadsheets, presentations, and PDFs. Load to choose the relevant workflow.' },
+	{ name: 'office-docx', description: 'Create, read, edit, and validate Word documents (.docx).' },
+	{ name: 'office-xlsx', description: 'Read, create, edit, and validate Excel workbooks, data, and formulas (.xlsx).' },
+]
 const CATALOG = [
 	'<system-reminder>',
 	'A skill is a reusable set of task-specific instructions. The following skills are available in this session:',
 	'',
 	'<available_skills>',
-	'- `office-docx`: Create, read, edit, and check Word documents (.docx), including reports, letters, and formatted tables. Use when a DOCX file is an input or requested deliverable.',
+	...OFFICE_SKILLS.map(skill => '- `' + skill.name + '`: ' + skill.description),
 	'</available_skills>',
 	'',
 	'</system-reminder>',
@@ -207,7 +212,9 @@ const catalogTwice = await runStep(catalogOnce)
 if (catalogOnce === CATALOG) throw new Error('技能目录没有被翻译')
 if (!catalogOnce.includes('技能是一组可复用的')) throw new Error('技能目录的引导句没有翻译')
 if (catalogTwice !== catalogOnce) throw new Error('技能目录翻译不幂等：第二次又改动了')
-console.log('技能目录：已翻译，且幂等（message id 与 source 不变，不会引起重发）')
+const untranslatedSkills = OFFICE_SKILLS.filter(skill => catalogOnce.includes(skill.description))
+if (untranslatedSkills.length > 0) throw new Error('office 技能的描述没被翻译：' + untranslatedSkills.map(skill => skill.name).join(', '))
+console.log('技能目录：已翻译，且幂等（message id 与 source 不变，不会引起重发）；office 描述已汉化')
 
 // 系统提示词侧同样要求幂等：同一份输入连跑两次必须逐字相同，否则每个 step 的前缀都会变。
 const second = await assemble()
