@@ -21,6 +21,17 @@ Release 就退回 GitHub 自动生成的提交清单。
 - `audit-coverage.mjs` 对工具文本同时测 schema 路径与 JSDoc 路径，减少假缺口。
 - `self-test.mjs` 的技能目录样本改用 rc.1 的 office 新描述并断言其已汉化。
 
+### 补遗：装上之后仍有英文的三处缺口
+
+- `harness:source` 与 `app:web-surface` 两段说明：rc.1 把「实现代码检出目录」与「Web GUI URL」
+  挪进运行时上下文，段落本体改成 path-free 的固定文案，旧表只认带路径的版本——补上两段新原文。
+- `schedule` 系列（`schedule_create` / `schedule_update` / `schedule_delete` / `schedule_list`）：
+  工具描述与每一个参数说明此前整组缺席，PTC 会话的 `tools:sdk` 里全是英文——补 20 条；
+  键与译文都含 JSDoc 闭合符的 `cron` 那条走 `DOCS` 层，靠 `unescapeDoc` / `escapeDoc`。
+- 运行时上下文的三条动态条目（`Current working directory`、实现代码检出目录、Web GUI URL）
+  补正则映射。
+- `dsh-badge` 技能描述与徽章规则补译。
+
 ## [2026.10.12] - 2026-10-12
 
 ### 以 dsh 插件包发布
