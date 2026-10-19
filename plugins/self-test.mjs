@@ -7,7 +7,7 @@
  *   剩下应当只有 TypeScript 类型声明与枚举字面量。
  *
  * 除了覆盖率，本脚本还守住三条纪律（见文中三处注释）：
- *   1. section 数量必须不变——身份段走按名注入，不该落到"补一段"的兜底分支；
+ *   1. section 数量只能多出末尾的批量引导段——身份段走按名注入，不该落到"补一段"的兜底分支；
  *   2. 会被 harness 插值的 section 里不许留下未注册变量（否则整份组装抛错、会话不可用）；
  *   3. 系统提示词必须与工作目录无关——换目录后 sections 与 tools 逐字节相同（缓存契约）。
  * 命中其中任何一条，脚本以非 0 退出码结束。
@@ -92,15 +92,22 @@ const tools = [{
 
 // 变量表按真实组装的现状给：0.2.1-alpha.2 里只剩 provider 与 model，`cwd` 已经不在了。
 const variables = { provider: 'deepseek', model: 'deepseek-flash' }
-/** 用指定工作目录跑一次组装：身份段不该因此有任何变化。 */
-const assemble = async (workdir = cwd) => handler(null, null, async () => ({
+/** 用指定工具目录跑一次组装。 */
+const assembleWith = async (toolList, workdir = cwd) => handler(null, null, async () => ({
 	sections,
 	contexts: [workdirContext(workdir), ...contexts.slice(1)],
-	tools,
+	tools: toolList,
 	variables,
 }))
+/** 用指定工作目录跑一次组装：身份段不该因此有任何变化。 */
+const assemble = async (workdir = cwd) => assembleWith(tools, workdir)
 const out = await assemble()
-if (out.sections.length !== sections.length) throw new Error('section 数量被改变')
+// 组装结果应当比输入多出**一段**：`cangjie:batch-calls`（批量引导），而且必须在末尾——
+// 它是整份系统提示词的末段（见 cangjie-zh.mjs 的 appendBatchSection）。
+if (out.sections.length !== sections.length + 1) throw new Error('section 数量不正确：应当只多出末尾的批量引导段')
+const batchSection = out.sections[out.sections.length - 1]
+if (batchSection?.name !== 'cangjie:batch-calls') throw new Error('批量引导不在系统提示词末尾（最后一段是 ' + batchSection?.name + '）')
+if (batchSection.interpolate !== false) throw new Error('批量引导段没有钉 interpolate: false')
 
 const text = out.sections.map(s => s.text).join('\n\n')
 const ctxText = out.contexts.map(c => c.text).join('\n\n')
@@ -133,17 +140,31 @@ if (identity === undefined) {
 	if (identity.text.includes(cwd)) throw new Error('身份段里嵌了工作目录，系统提示词会随项目变化：' + cwd)
 	if (identity.text.includes('{{')) throw new Error('身份段里留下了提示词变量占位符')
 	if (!identity.text.includes('行动边界')) throw new Error('身份段没有注入行为纪律')
-	// 「批量化调用」小节是**标准模式专属**：插件在 run_code（PTC 呈现）下会整段剥掉
-	// （见 cangjie-zh.mjs 的 BATCH_START / BATCH_END 与 isStandardMode），所以它对 PTC
-	// 样本是「不该出现」，不能当成缺失的纪律去断言。断言跟着模式走。
+	// 「批量化调用」引导**不在身份段里**：两种模式都把它搬到了系统提示词最后一段
+	// （见 cangjie-zh.mjs 的 appendBatchSection）。身份段只留行动边界、硬边界、提问纪律。
 	const DISCIPLINE_MARKERS = ['行动边界', '停下来先问的硬边界', '提问而不是内耗']
-	if (!tools.some(tool => tool !== null && typeof tool === 'object' && tool.name === 'run_code')) {
-		DISCIPLINE_MARKERS.push('批量化调用工具')
-	}
 	for (const marker of DISCIPLINE_MARKERS) {
 		if (!identity.text.includes(marker)) throw new Error('身份段缺少纪律小节：' + marker)
 	}
+	if (identity.text.includes('批量化调用工具')) throw new Error('身份段里还留着批量引导，它应该只在末尾段')
 }
+
+// 末尾段按模式取文案：PTC 样本（有 run_code）必须是"写进同一个程序"那套。
+if (!batchSection.text.includes('Promise.all') || !batchSection.text.includes('run_code')) {
+	throw new Error('PTC 样本下的批量引导不是 PTC 版文案')
+}
+// 标准模式（每个工具独立 schema、没有 run_code）用另一套：一个 assistant 消息里发多个调用。
+const standardOut = await assembleWith([{
+	name: 'read',
+	description: 'Read a file.',
+	parameters: { type: 'object', properties: {} },
+}])
+const standardBatch = standardOut.sections[standardOut.sections.length - 1]
+if (standardBatch?.name !== 'cangjie:batch-calls') throw new Error('标准模式下批量引导不在末尾')
+if (!standardBatch.text.includes('同一个 assistant 消息') || standardBatch.text.includes('run_code')) {
+	throw new Error('标准模式下的批量引导用了 PTC 文案')
+}
+console.log('批量引导：PTC 与标准模式各用一套文案，都在系统提示词末尾')
 
 // 残留英文检测：一行里出现 4 个及以上连续 ASCII 单词，且不含中文。
 const CJK = /[\u4e00-\u9fff]/

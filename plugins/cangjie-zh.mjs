@@ -20,10 +20,13 @@
  * 机器上安装的版本未必一致；两版并列后，命中哪一版都能翻译，旧版也不会因为
  * 升级而失效。表中带「rc.1 改写」注释的条目就是这批新增。
  *
- * 身份段是唯一的例外：它承载着全部行为纪律（行动边界、硬边界、提问纪律、工作目录），
+ * 身份段是唯一的例外：它承载着行为纪律（行动边界、硬边界、提问纪律、工作目录），
  * 一旦英文原文被改写，精确匹配失效就会让这些纪律**整体静默消失**。因此它不走纯文本
  * 匹配，而是由 `pinDiscipline` 按 section 名 `harness:identity` 直接写入，名字也对不上
  * 时再补一段——见该函数的说明。
+ *
+ * 「批量化调用」不在身份段里：两种呈现下措辞不同（标准模式发多个工具调用、PTC 写进同一个
+ * 程序），由 `appendBatchSection` 追加成系统提示词的**最后一段**——离模型动手那一刻最近。
  *
  * 身份段正文是**与环境无关的常量**：不写工作目录、时间、时区，也不引用任何提示词变量，
  * 写进 section 时钉 `interpolate: false`。理由是它位于系统提示词最前面（order -1000），
@@ -62,13 +65,7 @@ const PROSE = new Map([
 
 提问而不是内耗：疑惑只要问用户就能打消，就直接问，不要拿"再多验证几轮""再多读几个文件"来替代提问。一次只读调用（读一个已知文件、跑一条只读命令）就能定的事，自己查；要三次以上、答案还只是"大概能猜出来"，就停下来问。用 ask_user_question 一次问全部阻塞点，给出选项并把推荐项放第一位，不要逐个确认；反过来，能用只读命令查明的事不要拿去问用户。你问出的每一句都该是在补齐信息，而不是把决策权整体推回去。
 
-当前工作目录由每一轮用户消息里的运行时上下文给出，形如 \`Current working directory: "C:\\Users\\you\\project"\`，以那条为准；需要确认或改变当前目录时用 working_directory 工具（或在 shell 里 \`pwd\`）。
-
-批量化调用工具：把当前这一步该做的调用**在同一个 assistant 消息里一起发出**，不要等前一个结果再发下一个。
-- 独立调用可以并行：互不依赖的读取、搜索、glob、查询，以及互不依赖的写操作，一起发出；运行时会让只读调用并发执行，变更类调用按提交顺序单独执行。
-- 有依赖的必须分轮：下一个调用的参数取决于上一个的结果时，等结果回来再发。
-- 不要为了"稳妥"逐个发：一轮能发的独立调用拆成多轮，只是白等轮次、多花 token。
-- 有些工具的描述里写着"必须在同一批发出""不要逐个调用"——那是这种模式的直接要求，照做；"在程序内部调用""用 Promise.all"是本模式用不到的措辞，不用去找它。`],
+当前工作目录由每一轮用户消息里的运行时上下文给出，形如 \`Current working directory: "C:\\Users\\you\\project"\`，以那条为准；需要确认或改变当前目录时用 working_directory 工具（或在 shell 里 \`pwd\`）。`],
 	// ↑ 身份段正文里**没有**工作目录：路径随项目而变，写进 order -1000 的第一段会让整份
 	// 系统提示词的前缀缓存从头失效。当前目录由 working-directory:current 运行时上下文
 	// （用户消息）携带，模型照样拿得到——详见 `identityText()`。
@@ -479,9 +476,31 @@ send_message 与 interrupt_agent 的目标用 spawn_teammate 或 list_agents 返
 		'新的提醒内容。'],
 ])
 
-/** 只在标准模式注入的「批量化调用」小节的首尾标记——PTC 模式下整段剥掉。 */
-const BATCH_START = '批量化调用工具：'
-const BATCH_END = '不用去找它。'
+/**
+ * 「批量化调用」引导的段落名与两套正文。
+ *
+ * 这条引导**不写在身份段里**：身份段是提示词第一段（order -1000），而这条纪律要在模型
+ * 决定"这一轮发哪些调用"的那一刻最显眼，所以由 `appendBatchSection()` 追加到
+ * `system-prompt/assemble` 返回的 sections 末尾——那个数组就是渲染顺序，瀑布返回后不再排序
+ * （见 `dsh-system-prompt` 的 `assemble()` 与 `renderPrompt()`），因此它就是整份提示词的末段。
+ *
+ * 两种呈现方式的正确做法不同，所以按模式取文案：
+ * - 标准模式（每个工具独立 schema）：一个 assistant 消息里发多个工具调用；
+ * - PTC 模式（只能直接调 `run_code`）：把调用写进同一个程序，用 `Promise.all` 并发。
+ */
+const BATCH_SECTION = 'cangjie:batch-calls'
+
+const BATCH_STANDARD = `批量化调用工具：把当前这一步该做的调用**在同一个 assistant 消息里一起发出**，不要等前一个结果再发下一个。
+- 独立调用可以并行：互不依赖的读取、搜索、glob、查询，以及互不依赖的写操作，一起发出；运行时会让只读调用并发执行，变更类调用按提交顺序单独执行。
+- 有依赖的必须分轮：下一个调用的参数取决于上一个的结果时，等结果回来再发。
+- 不要为了"稳妥"逐个发：一轮能发的独立调用拆成多轮，只是白等轮次、多花 token。
+- 有些工具的描述里写着"必须在同一批发出""不要逐个调用"——那是这种模式的直接要求，照做；"在程序内部调用""用 Promise.all"是本模式用不到的措辞，不用去找它。`
+
+const BATCH_PTC = `批量化调用工具：把当前这一步该做的调用**全部**写进同一个 \`run_code\` 程序一次性发起，不要一个调用发一轮。
+- 独立调用用一个 \`Promise.all\` 并发：互不依赖的读取、搜索、glob、查询、web 调用都这样发；一批结果回来之后，还能在同一个程序里按返回值决定下一步做什么。
+- 有依赖的顺序 \`await\`：下一个调用的参数取决于上一个的结果时，在同一个程序里先后取，不要拆成两轮。
+- 变更类调用同样写在同一个程序里即可，运行时会按提交顺序单独执行；只要互不依赖，就不必为"稳妥"分轮。
+- 一轮程序能做完的事拆成多轮，只是白等轮次、多花 token。`
 
 /** 身份段（提示词第一段）的英文原文——`PROSE` 表的锚点键。 */
 const IDENTITY_EN = 'You are an AI agent powered by DeepSeek Harness.'
@@ -1611,8 +1630,8 @@ function translateTool(tool) {
  * 本次组装呈现给模型的是不是完整工具目录（标准模式的原生呈现）。
  *
  * PTC 模式下工具目录只有 `run_code` 一个，其余工具的说明落在 `tools:sdk` 段里；标准模式下
- * 每个工具的 schema 都在。身份段据此决定要不要写"批量化调用"那一段——那条纪律只在直接
- * 调用工具时有意义，PTC 下反而与"把调用写进同一个程序"的正确做法相冲突。
+ * 每个工具的 schema 都在。`appendBatchSection()` 据此决定末尾那段「批量化调用」用哪套文案——
+ * 两种呈现下"批量"的含义不同，措辞不能混用。
  * @param tools - 已装配的工具 schema 列表。
  * @returns 是否为标准模式（原生呈现）。
  */
@@ -1633,18 +1652,9 @@ function isStandardMode(tools) {
  * 运行时上下文，变量表里不再有 `cwd`）。
  * @param sections - 已翻译的 section 列表。
  * @param identity - 本次组装要写入的中文正文（与环境无关的常量，见 `identityText()`）。
- * @param standardMode - 是否标准模式；只看它决定要不要剥离"批量化调用"小节，不参与正文取值。
  * @returns 纪律已就位的 section 列表。
  */
-function pinDiscipline(sections, identity, standardMode) {
-	// 批量化调用那一段只在标准模式下有意义：PTC 的正确做法是把调用写进同一个程序。
-	if (!standardMode) {
-		const start = identity.indexOf(BATCH_START)
-		const end = identity.indexOf(BATCH_END)
-		if (start >= 0 && end > start) {
-			identity = (identity.slice(0, start) + identity.slice(end + BATCH_END.length)).replace(/\n{3,}/g, '\n\n').replace(/\n+$/, '\n')
-		}
-	}
+function pinDiscipline(sections, identity) {
 	if (identity === '') return sections
 	let pinned = false
 	const next = sections.map(section => {
@@ -1660,6 +1670,25 @@ function pinDiscipline(sections, identity, standardMode) {
 }
 
 /**
+ * 把「批量化调用」引导追加成系统提示词的**最后一段**。
+ *
+ * 为什么在末尾：`assemble()` 在进 `system-prompt/assemble` 瀑布**之前**就把 sections 排好序，
+ * 瀑布返回的数组被原样使用（只有 `complete` section 会整体替换它），所以往末尾追加的段落
+ * 就是渲染出来的最后一段——离模型真正决定"这一轮发哪些调用"最近。
+ *
+ * 幂等：同名段落先剔除再追加，重复应用（热重载、套娃挂载）不会堆出两段。内容与工作目录、
+ * 时间等无关，缓存契约不受影响；`interpolate: false` 与身份段同理，正文里的花括号只字面输出。
+ * @param sections - 已注入纪律的 section 列表；不是数组时原样返回。
+ * @param standardMode - 是否标准模式；决定用哪一套文案。
+ * @returns 追加了批量引导的 section 列表。
+ */
+function appendBatchSection(sections, standardMode) {
+	if (!Array.isArray(sections)) return sections
+	const rest = sections.filter(section => section?.name !== BATCH_SECTION)
+	return [...rest, { name: BATCH_SECTION, text: standardMode ? BATCH_STANDARD : BATCH_PTC, interpolate: false }]
+}
+
+/**
  * 在系统提示词组装瀑布上做中文化。只替换已知英文原文，结构与其他字段保持不变。
  * @param ctx - 本插件所在 fiber 的上下文。
  */
@@ -1669,11 +1698,16 @@ export function apply(ctx) {
 		if (assembled === null || typeof assembled !== 'object') return assembled
 		// 身份段正文是常量，不读运行时上下文、不读提示词变量：见 `identityText()`。
 		const identity = identityText()
+		const standardMode = isStandardMode(assembled.tools)
 		return {
 			...assembled,
-			sections: Array.isArray(assembled.sections)
-				? pinDiscipline(assembled.sections.map(translateContribution), identity, isStandardMode(assembled.tools))
-				: assembled.sections,
+			// 纪律钉在第一段；「批量化调用」按模式取文案，追加成最后一段（见 `appendBatchSection()`）。
+			sections: appendBatchSection(
+				Array.isArray(assembled.sections)
+					? pinDiscipline(assembled.sections.map(translateContribution), identity)
+					: assembled.sections,
+				standardMode,
+			),
 			contexts: Array.isArray(assembled.contexts) ? assembled.contexts.map(translateContribution) : assembled.contexts,
 			tools: Array.isArray(assembled.tools) ? assembled.tools.map(translateTool) : assembled.tools,
 		}
