@@ -8,6 +8,7 @@
  *
  * 除了覆盖率，本脚本还守住三条纪律（见文中三处注释）：
  *   1. section 数量只能多出末尾的批量引导段——身份段走按名注入，不该落到"补一段"的兜底分支；
+ *      批量引导只有 PTC 一套文案（本包只管 PTC），末尾段的位置与归属都在这里守；
  *   2. 会被 harness 插值的 section 里不许留下未注册变量（否则整份组装抛错、会话不可用）；
  *   3. 系统提示词必须与工作目录无关——换目录后 sections 与 tools 逐字节相同（缓存契约）。
  * 命中其中任何一条，脚本以非 0 退出码结束。
@@ -139,32 +140,26 @@ if (identity === undefined) {
 	// 工作目录由 runtime 上下文（用户消息）携带，不需要也不应该写进身份段。
 	if (identity.text.includes(cwd)) throw new Error('身份段里嵌了工作目录，系统提示词会随项目变化：' + cwd)
 	if (identity.text.includes('{{')) throw new Error('身份段里留下了提示词变量占位符')
-	if (!identity.text.includes('行动边界')) throw new Error('身份段没有注入行为纪律')
-	// 「批量化调用」引导**不在身份段里**：两种模式都把它搬到了系统提示词最后一段
-	// （见 cangjie-zh.mjs 的 appendBatchSection）。身份段只留行动边界、硬边界、提问纪律。
-	const DISCIPLINE_MARKERS = ['行动边界', '停下来先问的硬边界', '提问而不是内耗']
+	if (!identity.text.includes('行动规范')) throw new Error('身份段没有注入行为纪律')
+	// 「批量化调用」引导**不在身份段里**：它被追加到系统提示词最后一段
+	// （见 cangjie-zh.mjs 的 appendBatchSection）。身份段只留行动规范、破坏性操作授权、提问纪律。
+	const DISCIPLINE_MARKERS = ['行动规范', '破坏性操作需要先获得用户授权', '遇事不决就提问']
 	for (const marker of DISCIPLINE_MARKERS) {
 		if (!identity.text.includes(marker)) throw new Error('身份段缺少纪律小节：' + marker)
 	}
 	if (identity.text.includes('批量化调用工具')) throw new Error('身份段里还留着批量引导，它应该只在末尾段')
 }
 
-// 末尾段按模式取文案：PTC 样本（有 run_code）必须是"写进同一个程序"那套。
-if (!batchSection.text.includes('Promise.all') || !batchSection.text.includes('run_code')) {
-	throw new Error('PTC 样本下的批量引导不是 PTC 版文案')
+// 末尾段的文案：本包只服务 PTC（`run_code` 是唯一可直接调用的工具），所以只有一套文案。
+// 它必须还是"写进同一个程序、用 run_code"那套——标准模式（在一个 assistant 消息里发多个调用）
+// 属于雅言（`dsh-yayan-preset`），本包不维护、也不该出现那套措辞。
+if (!batchSection.text.includes('run_code')) {
+	throw new Error('末尾的批量引导没有提到 run_code，不是 PTC 版文案')
 }
-// 标准模式（每个工具独立 schema、没有 run_code）用另一套：一个 assistant 消息里发多个调用。
-const standardOut = await assembleWith([{
-	name: 'read',
-	description: 'Read a file.',
-	parameters: { type: 'object', properties: {} },
-}])
-const standardBatch = standardOut.sections[standardOut.sections.length - 1]
-if (standardBatch?.name !== 'cangjie:batch-calls') throw new Error('标准模式下批量引导不在末尾')
-if (!standardBatch.text.includes('同一个 assistant 消息') || standardBatch.text.includes('run_code')) {
-	throw new Error('标准模式下的批量引导用了 PTC 文案')
+if (batchSection.text.includes('同一个 assistant 消息')) {
+	throw new Error('末尾的批量引导混进了标准模式的措辞，那属于雅言包')
 }
-console.log('批量引导：PTC 与标准模式各用一套文案，都在系统提示词末尾')
+console.log('批量引导：PTC 单套文案，在系统提示词末尾')
 
 // 残留英文检测：一行里出现 4 个及以上连续 ASCII 单词，且不含中文。
 const CJK = /[\u4e00-\u9fff]/

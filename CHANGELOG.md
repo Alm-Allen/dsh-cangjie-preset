@@ -7,6 +7,21 @@ Release 就退回 GitHub 自动生成的提交清单。
 
 版本号用日期式（`2026.10.12`），与 `package.json` 的 `version`、tag 名同号。
 
+## [2026.10.20] - 2026-10-20
+
+### 职责收窄：仓颉只管 PTC，删掉标准模式那套分支
+
+- 删除 `BATCH_STANDARD`、`isStandardMode()`，以及 `appendBatchSection()` 的 `standardMode`
+  参数：本包覆盖的是 `ptc` 预设，`run_code` 始终存在，标准模式那一支**运行时永远走不到**，
+  留着只是从雅言包复制过来时带上的死代码。标准模式的「同一个 assistant 消息里发多个调用」
+  归雅言（`dsh-yayan-preset`）维护。
+- 末尾的 `cangjie:batch-calls` 现在无条件取 PTC 那套文案。行为不变——删掉的是一段不可达分支。
+- `DISCIPLINE_MARK` 跟随身份段的新措辞改为「行动规范」（原先写死「行动边界」，改名后
+  `pinDiscipline` 的兜底检测会失效）。
+- `self-test.mjs`：`DISCIPLINE_MARKERS` 改为匹配身份段当前措辞（「行动规范」/「破坏性操作
+  需要先获得用户授权」/「遇事不决就提问」）；删掉标准模式样本的断言，改成两条——末尾段必须
+  提到 `run_code`，且**不得**混进「同一个 assistant 消息」那套雅言措辞。
+
 ## [2026.10.19] - 2026-10-19
 
 ### 把「批量化调用」引导搬到系统提示词末尾，按模式取文案
