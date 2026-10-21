@@ -7,6 +7,17 @@ Release 就退回 GitHub 自动生成的提交清单。
 
 版本号用日期式（`2026.10.12`），与 `package.json` 的 `version`、tag 名同号。
 
+## [2026.10.21] - 2026-10-21
+
+### 跟进 0.2.1-rc.2 的 `run_code` 文案，补上工具描述与 `description` 参数
+
+- 0.2.1-rc.2 把 `run_code` 的工具描述改成 **`code` 在前、`description` 在后**，并删掉了
+  `description` 参数说明里的「Provide `description` before `code` in the arguments.」。
+  表里仍是旧顺序，两条都命不中：PTC 会话里工具卡片和 `run_code` 的 schema 一直露英文。
+- 两条已按 0.2.1-rc.2 的原文替换；兼容基线改为 **0.2.1-rc.2 + 0.2.1-alpha.5**（这两段
+  文案两版相同），不再为更早的版本保留旧顺序。
+- `self-test.mjs` 的内置样本同步成新版：此前样本停在旧文案，自测是绿的，真实 schema 却漏译。
+
 ## [2026.10.20] - 2026-10-20
 
 ### 职责收窄：仓颉只管 PTC，删掉标准模式那套分支

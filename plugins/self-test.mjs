@@ -79,12 +79,12 @@ const contexts = [
 ]
 const tools = [{
 	name: 'run_code',
-	description: 'Execute a TypeScript program against the available tools. Takes two required arguments: `description`, a short summary of what the program does, and `code`, the BODY of an async function (erasable syntax only; top-level `await` and `return` work). Call tools as `await tools.name(args)` per the declarations in the system prompt. Only what you print or return is program output — curate it. Image-bearing subtool results are attached after the run.',
+	description: 'Execute a TypeScript program against the available tools. Takes two required arguments: `code`, the BODY of an async function (erasable syntax only; top-level `await` and `return` work), and `description`, a short summary of what the program does. Call tools as `await tools.name(args)` per the declarations in the system prompt. Only what you print or return is program output — curate it. Image-bearing subtool results are attached after the run.',
 	parameters: {
 		type: 'object',
 		properties: {
 			code: { type: 'string', required: true, description: 'The program: the body of an async TypeScript function.' },
-			description: { type: 'string', required: true, description: 'Clear, concise description of what this program does in active voice, 5-10 words (shown in the UI). Provide `description` before `code` in the arguments. Examples: "Count TODO markers across packages"; "Read failing test and its fixture"; "Rename config key in every cordis.yml".' },
+			description: { type: 'string', required: true, description: 'Clear, concise description of what this program does in active voice, 5-10 words (shown in the UI). Examples: "Count TODO markers across packages"; "Read failing test and its fixture"; "Rename config key in every cordis.yml".' },
 		},
 		required: ['code', 'description'],
 		additionalProperties: false,

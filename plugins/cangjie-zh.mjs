@@ -384,8 +384,8 @@ send_message 与 interrupt_agent 的目标用 spawn_teammate 或 list_agents 返
 	// 下有多个可达变体（`subagent`/`subagent_fork` 就有 12 种拼接），按整段收要写十几条，
 	// 片段化之后子串替换一次覆盖全部变体，也不会随配置组合失效。
 	[
-		"Execute a TypeScript program against the available tools. Takes two required arguments: `description`, a short summary of what the program does, and `code`, the BODY of an async function (erasable syntax only; top-level `await` and `return` work). Call tools as `await tools.name(args)` per the declarations in the system prompt. Only what you print or return is program output — curate it. Image-bearing subtool results are attached after the run.",
-		"对当前可用的工具执行一段 TypeScript 程序。接受两个必填参数：`description`，对程序功能的简短说明；以及 `code`，一个 async 函数的**函数体**（只支持可擦除语法；顶层 `await` 与 `return` 可用）。按系统提示中的声明，用 `await tools.name(args)` 调用工具。只有你打印或返回的内容才是程序输出——请精心挑选。含图片的子工具结果会在运行结束后附加。",
+		"Execute a TypeScript program against the available tools. Takes two required arguments: `code`, the BODY of an async function (erasable syntax only; top-level `await` and `return` work), and `description`, a short summary of what the program does. Call tools as `await tools.name(args)` per the declarations in the system prompt. Only what you print or return is program output — curate it. Image-bearing subtool results are attached after the run.",
+		"对当前可用的工具执行一段 TypeScript 程序。接受两个必填参数：`code`，一个 async 函数的**函数体**（只支持可擦除语法；顶层 `await` 与 `return` 可用）；以及 `description`，对程序功能的简短说明。按系统提示中的声明，用 `await tools.name(args)` 调用工具。只有你打印或返回的内容才是程序输出——请精心挑选。含图片的子工具结果会在运行结束后附加。",
 	],
 	// 执行器自述（`PtcRuntime.executionInstructions`，由 `packages/core/tools` 拼进 run_code 的
 	// description）：0.2.1-alpha.2 起由 ptc-runtime 提供，旧版本没有这段，故为新增缺口。
@@ -400,8 +400,8 @@ send_message 与 interrupt_agent 的目标用 spawn_teammate 或 list_agents 返
 	["The program: the body of an async TypeScript function.", "程序：一个 async TypeScript 函数的函数体。"],
 	["The program: the body of an async Python function.", "程序：一个 async Python 函数的函数体。"],
 	[
-		'Clear, concise description of what this program does in active voice, 5-10 words (shown in the UI). Provide `description` before `code` in the arguments. Examples: "Count TODO markers across packages"; "Read failing test and its fixture"; "Rename config key in every cordis.yml".',
-		'用主动语态清楚、简洁地描述这段程序做什么，5–10 个词（显示在 UI 中）。在参数里，`description` 要写在 `code` 之前。示例："Count TODO markers across packages"；"Read failing test and its fixture"；"Rename config key in every cordis.yml"。',
+		'Clear, concise description of what this program does in active voice, 5-10 words (shown in the UI). Examples: "Count TODO markers across packages"; "Read failing test and its fixture"; "Rename config key in every cordis.yml".',
+		'用主动语态清楚、简洁地描述这段程序做什么，5–10 个词（显示在 UI 中）。示例："Count TODO markers across packages"；"Read failing test and its fixture"；"Rename config key in every cordis.yml"。',
 	],
 	[
 		"Positive elapsed-time budget in milliseconds, capped by the deployment maximum.",
