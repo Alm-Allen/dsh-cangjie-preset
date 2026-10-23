@@ -356,20 +356,42 @@ const PROSE = new Map([
 	// 直接写入，只出现在未排除 Team 的预设里（本机 chat 已被 excludePresets 排除）。
 
 	[
-		`Agent Teams is available in this session, but create teammates only when the user explicitly asks to use Agent Teams or teammates.
+		`Agent Teams is available in this session
 
 The Team Lead and all teammates share the same working directory and filesystem. Edits are immediately visible to every member. Split write work into disjoint scopes, record expected write scopes on shared tasks, and use task dependencies when work must be ordered. Write-scope overlap is advisory, not a lock.
 
 Prefer read/edit/write for file changes. If a file operation returns FS_STALE_VERSION, read the current file, rebase your intended change onto the new content, and retry. Bash, formatters, code generators, and scripts are not fully protected by the filesystem version guard; coordinate them explicitly and have the Lead review the final diff and run tests.
 
-Use the target returned by spawn_teammate or list_agents for send_message and interrupt_agent, or as owner when assigning or filtering shared tasks. send_message steers a running target at its nearest step boundary and starts or resumes an inactive target. inactive means no turn is executing; it does not describe task completion, success, failure, or waiting for other agents. provisioning means member creation is in progress; failed means member creation failed. A delivered peer item starts with its stable message id and sender name. A successful send is already durable even when its result says queued; do not resend it. Shared-task workflow is list, get, claim with the current revision, perform the work, then complete. Task readiness never starts an owner. Before wait_agent, use list_agents and make sure another required member is running or provisioning; use send_message first when the required member is inactive. wait_agent observes only changes after that call starts, never wakes a member, and returns noProgress immediately when no other member can produce a change. Re-list after wakeup or timeout. The Lead must wait for required teammates before giving the final answer.`,
-		`本会话可以使用 Agent Teams（智能体团队），但只有用户明确要求使用 Agent Teams 或队友时才创建队友。
+Use the target returned by spawn_teammate or list_agents for send_message and interrupt_agent, or as owner when assigning or filtering shared tasks. send_message steers a running target at its nearest step boundary and starts or resumes an inactive target. inactive means no turn is executing; it does not describe task completion, success, failure, or waiting for other agents. provisioning means member creation is in progress; failed means member creation failed. A peer message starts with its sender name. A successful send does not mean the recipient has processed it. Shared-task workflow is list, get, claim with the current revision, perform the work, then complete. Task readiness never starts an owner. Before wait_agent, use list_agents and make sure another required member is running or provisioning; use send_message first when the required member is inactive. wait_agent observes only changes after that call starts, never wakes a member, and returns noProgress immediately when no other member can produce a change. Re-list after wakeup or timeout. The Lead must wait for required teammates before giving the final answer.`,
+		`本会话可以使用 Agent Teams（智能体团队）。
 
 Team Lead 与所有队友共享同一个工作目录与文件系统。任何成员的改动对其他成员立即可见。把写入工作切分成互不重叠的作用域，把预期的写作用域记在共享任务上，需要排序时用任务依赖。写作用域重叠只是提示，不是锁。
 
 文件改动优先用 read/edit/write。如果某个文件操作返回 FS_STALE_VERSION，先读当前文件，把你的改动重基到新内容上，再重试。bash、格式化器、代码生成器与脚本并不完全受文件系统版本护栏保护；要显式协调它们，并由 Lead 审阅最终 diff 并运行测试。
 
-send_message 与 interrupt_agent 的目标用 spawn_teammate 或 list_agents 返回的 target；分配或筛选共享任务时也一样用它作 owner。send_message 会把正在运行的目标转向它最近的步骤边界，对 inactive 的目标则开始或恢复一轮。inactive 表示当前没有轮次在执行；它不描述任务完成、成功、失败或正在等待其他 agent。provisioning 表示成员创建正在进行；failed 表示成员创建失败。已投递的同伴消息以它稳定的消息 id 与发送者名字开头。一次成功的发送即使结果显示 queued 也已经持久化，不要重发。共享任务的流程是 list、get、用当前修订号 claim、做事、然后 complete。任务就绪不会启动归属者。在 wait_agent 之前，先用 list_agents 确认确实还有一个必需的成员在 running 或 provisioning；如果那个必需成员是 inactive，先用 send_message 唤醒它。wait_agent 只观察该调用开始之后的变化，从不唤醒成员；当没有其他成员可能产生变化时，它会立刻返回 noProgress。醒来或超时之后重新 list。Lead 必须在给出最终答复之前等待必需的队友。`,
+send_message 与 interrupt_agent 的目标用 spawn_teammate 或 list_agents 返回的 target；分配或筛选共享任务时也一样用它作 owner。send_message 会把正在运行的目标转向它最近的步骤边界，对 inactive 的目标则开始或恢复一轮。inactive 表示当前没有轮次在执行；它不描述任务完成、成功、失败或正在等待其他 agent。provisioning 表示成员创建正在进行；failed 表示成员创建失败。同伴消息以发送者名字开头。发送成功并不意味着接收者已经处理了它。共享任务的流程是 list、get、用当前修订号 claim、做事、然后 complete。任务就绪不会启动归属者。在 wait_agent 之前，先用 list_agents 确认确实还有一个必需的成员在 running 或 provisioning；如果那个必需成员是 inactive，先用 send_message 唤醒它。wait_agent 只观察该调用开始之后的变化，从不唤醒成员；当没有其他成员可能产生变化时，它会立刻返回 noProgress。醒来或超时之后重新 list。Lead 必须在给出最终答复之前等待必需的队友。`,
+	],
+	[
+		`Agent Teams is available in this session
+
+The Team Lead and all teammates share the same working directory and filesystem. Edits are immediately visible to every member. Split write work into disjoint scopes, record expected write scopes on shared tasks, and use task dependencies when work must be ordered. Write-scope overlap is advisory, not a lock.
+
+Prefer read/edit/write for file changes. If a file operation returns FS_STALE_VERSION, read the current file, rebase your intended change onto the new content, and retry. Bash, formatters, code generators, and scripts are not fully protected by the filesystem version guard; coordinate them explicitly and have the Lead review the final diff and run tests.
+
+Use the target returned by spawn_teammate or list_agents for send_message, or as owner when assigning or filtering shared tasks. send_message steers a running target at its nearest step boundary and starts or resumes an inactive target. inactive means no turn is executing; it does not describe task completion, success, failure, or waiting for other agents. provisioning means member creation is in progress; failed means member creation failed. A peer message starts with its sender name. A successful send does not mean the recipient has processed it. Shared-task workflow is list, get, claim with the current revision, perform the work, then complete. Task readiness never starts an owner. Before wait_agent, use list_agents and make sure another required member is running or provisioning; use send_message first when the required member is inactive. wait_agent observes only changes after that call starts, never wakes a member, and returns noProgress immediately when no other member can produce a change. Re-list after wakeup or timeout. The Lead must wait for required teammates before giving the final answer.`,
+		`本会话可以使用 Agent Teams（智能体团队）。
+
+Team Lead 与所有队友共享同一个工作目录与文件系统。任何成员的改动对其他成员立即可见。把写入工作切分成互不重叠的作用域，把预期的写作用域记在共享任务上，需要排序时用任务依赖。写作用域重叠只是提示，不是锁。
+
+文件改动优先用 read/edit/write。如果某个文件操作返回 FS_STALE_VERSION，先读当前文件，把你的改动重基到新内容上，再重试。bash、格式化器、代码生成器与脚本并不完全受文件系统版本护栏保护；要显式协调它们，并由 Lead 审阅最终 diff 并运行测试。
+
+send_message 的目标用 spawn_teammate 或 list_agents 返回的 target；分配或筛选共享任务时也一样用它作 owner。send_message 会把正在运行的目标转向它最近的步骤边界，对 inactive 的目标则开始或恢复一轮。inactive 表示当前没有轮次在执行；它不描述任务完成、成功、失败或正在等待其他 agent。provisioning 表示成员创建正在进行；failed 表示成员创建失败。同伴消息以发送者名字开头。发送成功并不意味着接收者已经处理了它。共享任务的流程是 list、get、用当前修订号 claim、做事、然后 complete。任务就绪不会启动归属者。在 wait_agent 之前，先用 list_agents 确认确实还有一个必需的成员在 running 或 provisioning；如果那个必需成员是 inactive，先用 send_message 唤醒它。wait_agent 只观察该调用开始之后的变化，从不唤醒成员；当没有其他成员可能产生变化时，它会立刻返回 noProgress。醒来或超时之后重新 list。Lead 必须在给出最终答复之前等待必需的队友。`,
+	],
+
+	// Agent Teams 的 team:identity 段（Lead 视角）：名字固定为 "lead"，可以精确匹配。
+	[
+		'You are the Team Lead named "lead".\nUse list_agents({}) to find your teammates and their names.\nTo message another teammate, use send_message({ target: "<teammate name>", message: "..." }).',
+		'你是名为 "lead" 的 Team Lead。\n用 list_agents({}) 找到你的队友及他们的名字。\n要给另一位队友发消息，用 send_message({ target: "<teammate name>", message: "..." })。',
 	],
 
 	// ── 0.2.1-alpha.1 改写的原文（上面的旧键一律保留，旧版本仍能命中）──
@@ -875,6 +897,12 @@ const PATTERNS = [
 		/^Use the (\S+) tool ONLY when the user explicitly asks for a workflow or for large multi-agent orchestration: you write a JavaScript script \(the tool description documents the exact format\) that fans work out across many subagents with phases and structured results\. For one or two delegations, prefer plain subagent calls\.$/,
 		(_m, toolName) =>
 			`只有当用户明确要求 workflow 或大规模多 agent 编排时，才使用 ${toolName} 工具：你要写一段 JavaScript 脚本（工具描述里有确切的格式说明），把工作按阶段分发给许多 subagent 并汇总结构化结果。只有一两次委派时，优先用普通的 subagent 调用。`,
+	],
+	// Agent Teams 的 team:identity 段（队友视角）：队友名是动态的，只能走正则。
+	[
+		/^You are teammate "([^"]+)"\.\nYour Team Lead is named "lead"\.\nTo message your Team Lead, use send_message\(\{ target: "lead", message: "\.\.\." \}\)\.\nUse list_agents\(\{\}\) to find your teammates and their names\.\nTo message another teammate, use send_message\(\{ target: "<teammate name>", message: "\.\.\." \}\)\.$/,
+		(_m, name) =>
+			`你是队友 "${name}"。\n你的 Team Lead 名为 "lead"。\n要给 Team Lead 发消息，用 send_message({ target: "lead", message: "..." })。\n用 list_agents({}) 找到你的队友及他们的名字。\n要给另一位队友发消息，用 send_message({ target: "<teammate name>", message: "..." })。`,
 	],
 ];
 
@@ -1759,8 +1787,8 @@ const DOCS = new Map([
 		"fresh 不携带 Lead 的历史启动；fork 继承 Lead 已完成的轮次。默认为 fresh。",
 	],
 	[
-		"Send one durable message to another Team member. A running target receives it at the nearest step boundary; an inactive target starts or resumes a turn.",
-		"向另一位团队成员发送一条持久消息。正在运行的目标会在最近的步骤边界收到它；inactive 的目标会因此开始或恢复一轮。",
+		"Send one message to another Team member. A running target receives it at the nearest step boundary; an inactive target starts or resumes a turn.",
+		"向另一位团队成员发送一条消息。正在运行的目标会在最近的步骤边界收到它；inactive 的目标会因此开始或恢复一轮。",
 	],
 	[
 		"Member target returned by spawn_teammate or list_agents, including lead.",
@@ -1772,8 +1800,8 @@ const DOCS = new Map([
 		"列出 Lead 与每个持久队友，含可寻址目标与当前可用性。inactive 表示当前没有轮次在执行，而不是任务结果。provisioning 与 failed 描述成员创建的进行状态。",
 	],
 	[
-		"Wait for the next teammate status, mailbox, or shared-task change after this call starts. This never wakes inactive members and returns noProgress immediately when no other member is running or provisioning. Re-list after wakeup or timeout instead of polling.",
-		"等待本次调用开始之后的下一个队友状态、邮箱或共享任务变化。它永远不会唤醒 inactive 的成员；当没有其他成员在运行或正在创建时，会立刻返回 noProgress。醒来或超时之后重新 list，不要轮询。",
+		"Wait for the next teammate status, message, or shared-task change after this call starts. This never wakes inactive members and returns noProgress immediately when no other member is running or provisioning. Re-list after wakeup or timeout instead of polling.",
+		"等待本次调用开始之后的下一个队友状态、消息或共享任务变化。它永远不会唤醒 inactive 的成员；当没有其他成员在运行或正在创建时，会立刻返回 noProgress。醒来或超时之后重新 list，不要轮询。",
 	],
 	[
 		"Wait duration in milliseconds, from 10000 through 3600000. Defaults to 30000.",

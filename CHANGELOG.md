@@ -7,6 +7,18 @@ Release 就退回 GitHub 自动生成的提交清单。
 
 版本号用日期式（`2026.10.12`），与 `package.json` 的 `version`、tag 名同号。
 
+## [2026.10.23] - 2026-10-23
+
+### 适配 0.2.1-rc.2 的 Agent Teams 文案
+
+- 上游在 c772c85c17 改写了 `tool-agent-team` 的措辞：`team:policy` 首句去掉「只在用户
+  明确要求时才创建队友」的但书、尾部换成「同伴消息以发送者名字开头 / 发送成功不代表已处理」；
+  `send_message` 去掉 durable，`wait_agent` 的 mailbox 改为 message。旧键全部失配，
+  PTC 会话里团队工具描述与整段 policy 会露英文。
+- 上述三条已按 0.2.1-rc.2 原文替换；`team:policy` 保留 `interrupt=true/false` 两个变体。
+- 新增 `team:identity` 两段：Lead 视角是固定文本，走精确键；队友视角的名字是动态的，走正则。
+- 回放 0.2.1-rc.2 原文：policy 19/19 句、`tools:sdk` 的 35 条 JSDoc、两种身份段全部命中。
+
 ## [2026.10.21] - 2026-10-21
 
 ### 跟进 0.2.1-rc.2 的 `run_code` 文案，补上工具描述与 `description` 参数
